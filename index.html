@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCG → REPCO NEX | Interactive Business Map (Official 2568)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      /* SCG Group */
+      --color-scg: #E30613;
+
+      /* 8 Business Units */
+      --color-cement-green: #BF6B3F;
+      --color-smart-living: #D4953D;
+      --color-distribution: #00838F;
+      --color-decor: #C2185B;
+      --color-scgc: #0066A1;
+      --color-scgp: #2E7D32;
+      --color-cleanergy: #43A047;
+      --color-investment: #5E35B1;
+
+      /* SCGC Divisions */
+      --color-olefins: #42A5F5;
+      --color-vinyl: #AB47BC;
+      --color-other-biz: #8D6E63;
+      --color-jv: #689F38;
+
+      /* REPCO Pillars */
+      --color-repco: #1A237E;
+      --color-build: #FF8F00;
+      --color-maintain: #00897B;
+      --color-maximize: #6A1B9A;
+      --color-product: #455A64;
+
+      /* Badges */
+      --badge-set: #F59E0B;
+      --badge-center: #DC2626;
+
+      /* APM Focus Highlight */
+      --focus-color: #E91E63;
+      --focus-glow: rgba(233, 30, 99, 0.35);
+      --focus-bg: #FFF0F5;
+
+      --bg-primary: #f5f7fa;
+      --bg-surface: #ffffff;
+      --bg-elevated: #fafbfc;
+      --border: #e1e5eb;
+      --text-primary: #1a2332;
+      --text-secondary: #4a5568;
+      --text-muted: #8b95a7;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'Sarabun', sans-serif; background: var(--bg-primary); color: var(--text-primary); font-size: 14px; -webkit-font-smoothing: antialiased; }
+
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* HEADER */
+    header { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: var(--shadow-sm); z-index: 10; flex-shrink: 0; }
+    .header-left { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+    .logo { width: 44px; height: 44px; background: linear-gradient(135deg, var(--color-scg) 0%, #b8050e 100%); color: white; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-family: 'Prompt'; font-weight: 800; font-size: 14px; box-shadow: 0 4px 10px rgba(227,6,19,0.25); }
+    .title { font-family: 'Prompt'; font-size: 16px; font-weight: 700; line-height: 1.2; }
+    .subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .header-center { flex: 1; max-width: 340px; }
+    .search-wrapper { position: relative; }
+    .search-input { width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border); border-radius: 20px; font-family: inherit; font-size: 13px; background: var(--bg-elevated); transition: all 0.15s; }
+    .search-input:focus { outline: none; background: white; border-color: var(--color-scg); box-shadow: 0 0 0 3px rgba(227,6,19,0.1); }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+    .search-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--border); border-radius: 10px; margin-top: 4px; box-shadow: var(--shadow-lg); max-height: 280px; overflow-y: auto; z-index: 100; display: none; }
+    .search-results.show { display: block; }
+    .search-result-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+    .search-result-item:hover { background: var(--bg-elevated); }
+    .search-result-item:last-child { border-bottom: none; }
+    .search-result-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .search-result-text { flex: 1; }
+    .search-result-name { font-weight: 600; font-size: 13px; }
+    .search-result-path { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+    .search-no-result { padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px; }
+
+    .controls { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
+    .btn { padding: 7px 12px; border: 1px solid var(--border); background: var(--bg-surface); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; color: var(--text-secondary); transition: all 0.15s; font-weight: 500; white-space: nowrap; }
+    .btn:hover { background: var(--bg-elevated); border-color: #c8d0db; transform: translateY(-1px); }
+    .btn-primary { background: var(--color-scg); color: white; border-color: var(--color-scg); box-shadow: 0 2px 6px rgba(227,6,19,0.25); }
+    .btn-primary:hover { background: #c70511; }
+    .btn-repco { background: var(--color-repco); color: white; border-color: var(--color-repco); box-shadow: 0 2px 6px rgba(26,35,126,0.25); }
+    .btn-repco:hover { background: #0d165e; }
+    .btn-apm { background: var(--focus-color); color: white; border-color: var(--focus-color); box-shadow: 0 2px 6px var(--focus-glow); }
+    .btn-apm:hover { background: #c1185b; }
+
+    /* BREADCRUMB */
+    .breadcrumb-bar { padding: 8px 24px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 2px; min-height: 36px; overflow-x: auto; white-space: nowrap; flex-shrink: 0; }
+    .crumb { cursor: pointer; padding: 3px 8px; border-radius: 4px; transition: background 0.15s; display: inline-flex; align-items: center; gap: 5px; }
+    .crumb:hover { background: rgba(0,0,0,0.05); }
+    .crumb.current { color: var(--text-primary); font-weight: 600; }
+    .crumb-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .crumb-sep { color: var(--text-muted); margin: 0 1px; font-size: 9px; }
+
+    main { display: flex; flex: 1; overflow: hidden; }
+    #tree-section { flex: 1; position: relative; background: var(--bg-primary); background-image: radial-gradient(circle at 20px 20px, rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 24px 24px; overflow: hidden; }
+    #tree-svg { width: 100%; height: 100%; cursor: grab; }
+    #tree-svg:active { cursor: grabbing; }
+
+    /* TREE NODES */
+    .node-card { cursor: pointer; }
+    .node-card rect.node-rect { transition: stroke-width 0.2s, filter 0.2s; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); }
+    .node-card:hover rect.node-rect { filter: drop-shadow(0 6px 14px rgba(0,0,0,0.18)); }
+    .node-card.selected rect.node-rect { stroke-width: 3 !important; }
+    .node-card.search-match rect.node-rect { stroke-width: 3 !important; animation: pulse 1.2s ease-in-out 2; }
+
+    /* === APM Focus Highlight === */
+    .node-card.focus rect.node-rect {
+      fill: var(--focus-bg) !important;
+      stroke: var(--focus-color) !important;
+      stroke-width: 2.5 !important;
+      filter: drop-shadow(0 0 10px var(--focus-glow));
+    }
+    .node-card.focus:hover rect.node-rect {
+      filter: drop-shadow(0 0 16px var(--focus-color)) drop-shadow(0 6px 14px rgba(0,0,0,0.18));
+    }
+    .node-card.focus rect.node-accent { fill: var(--focus-color) !important; }
+    .node-card.focus.selected rect.node-rect { stroke-width: 3.5 !important; }
+    @keyframes focus-glow {
+      0%, 100% { filter: drop-shadow(0 0 8px var(--focus-glow)); }
+      50% { filter: drop-shadow(0 0 18px var(--focus-color)); }
+    }
+    .node-card.focus rect.node-rect { animation: focus-glow 3s ease-in-out infinite; }
+    /* Focus tag (★ Focus) badge on tree node */
+    .focus-tag { font-size: 8px; font-weight: 800; fill: var(--focus-color); }
+    @keyframes pulse {
+      0%, 100% { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); }
+      50% { filter: drop-shadow(0 0 16px var(--color-scg)); }
+    }
+    .node-text { font-family: 'Sarabun'; pointer-events: none; user-select: none; }
+    .node-text-title { font-weight: 700; font-size: 12px; }
+    .node-text-sub { font-weight: 400; font-size: 9.5px; opacity: 0.85; }
+    .node-badge { font-size: 9px; font-weight: 700; pointer-events: none; user-select: none; }
+    .node-toggle { cursor: pointer; }
+    .node-toggle circle { transition: all 0.15s; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
+    .node-toggle:hover circle { stroke-width: 2; }
+
+    .link { fill: none; stroke: #b8c1cf; stroke-width: 1.5px; transition: stroke 0.2s, stroke-width 0.2s; }
+
+    /* DETAILS PANEL */
+    #details-panel { width: 400px; background: var(--bg-surface); border-left: 1px solid var(--border); overflow-y: auto; flex-shrink: 0; }
+    #details-panel::-webkit-scrollbar { width: 6px; }
+    #details-panel::-webkit-scrollbar-thumb { background: #c8d0db; border-radius: 3px; }
+    .panel-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); text-align: center; gap: 14px; padding: 24px; }
+    .panel-empty-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--bg-elevated); display: flex; align-items: center; justify-content: center; font-size: 30px; border: 1px solid var(--border); }
+    #panel-content { padding: 24px; }
+
+    .panel-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; color: white; }
+    .panel-badges { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .panel-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; }
+    .panel-badge.set { background: var(--badge-set); color: white; }
+    .panel-badge.center { background: var(--badge-center); color: white; }
+    .panel-badge.focus { background: var(--focus-color); color: white; box-shadow: 0 0 8px var(--focus-glow); }
+    .panel-title { font-family: 'Prompt'; font-size: 21px; font-weight: 700; line-height: 1.25; margin-bottom: 4px; }
+    .panel-fullname { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .panel-tagline { color: var(--text-secondary); font-size: 13px; margin-bottom: 16px; line-height: 1.5; font-style: italic; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(95px, 1fr)); gap: 8px; margin-bottom: 8px; }
+    .stat-card { background: var(--bg-elevated); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); }
+    .stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+    .stat-value { font-weight: 700; font-size: 14px; color: var(--text-primary); }
+
+    .section-title { font-family: 'Prompt'; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin: 20px 0 8px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .description { font-size: 13px; line-height: 1.65; color: var(--text-secondary); }
+    .strategic-box { background: linear-gradient(135deg, #fff5f6 0%, #fff 100%); border-left: 3px solid var(--color-scg); padding: 12px 14px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+
+    .children-list { display: flex; flex-direction: column; gap: 5px; max-height: 300px; overflow-y: auto; padding-right: 4px; }
+    .child-chip { padding: 8px 12px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
+    .child-chip:hover { background: white; box-shadow: var(--shadow-sm); transform: translateX(3px); }
+    .child-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .child-name { flex: 1; }
+    .child-mini-badge { font-size: 9px; padding: 1px 5px; border-radius: 8px; font-weight: 700; color: white; }
+    .child-mini-badge.set { background: var(--badge-set); }
+    .child-mini-badge.center { background: var(--badge-center); }
+
+    .external-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 9px 14px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; color: var(--color-scgc); text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+    .external-link:hover { background: white; box-shadow: var(--shadow-sm); }
+
+    /* OVERLAYS */
+    .legend { position: absolute; bottom: 16px; left: 16px; background: var(--bg-surface); padding: 12px 14px; border-radius: 10px; box-shadow: var(--shadow-md); border: 1px solid var(--border); font-size: 11px; z-index: 5; max-height: 380px; overflow-y: auto; width: 220px; }
+    .legend-title { font-weight: 700; margin-bottom: 8px; font-family: 'Prompt'; font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+    .legend-color { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .legend-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+
+    .zoom-info { position: absolute; bottom: 16px; right: 16px; background: var(--bg-surface); padding: 6px 12px; border-radius: 8px; box-shadow: var(--shadow-md); border: 1px solid var(--border); font-size: 11px; color: var(--text-muted); z-index: 5; font-variant-numeric: tabular-nums; }
+
+    .hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: rgba(26, 35, 50, 0.92); color: white; padding: 8px 18px; border-radius: 20px; font-size: 12px; z-index: 5; pointer-events: none; animation: fadeOut 6s forwards; box-shadow: var(--shadow-lg); }
+    @keyframes fadeOut { 0%, 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -10px); } }
+
+    @media (max-width: 1280px) { #details-panel { width: 340px; } .header-center { max-width: 220px; } }
+    @media (max-width: 1024px) { #details-panel { width: 300px; } }
+    @media (max-width: 768px) { header { flex-direction: column; align-items: stretch; } .header-center { max-width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-left">
+        <div class="logo">SCG</div>
+        <div>
+          <div class="title">SCG · Interactive Business Map</div>
+          <div class="subtitle">Official Structure ณ 1 ม.ค. 2568 · 8 Business Units · Focus: APM (Asset Performance Maximization)</div>
+        </div>
+      </div>
+      <div class="header-center">
+        <div class="search-wrapper">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" class="search-input" id="search-input" placeholder="ค้นหาบริษัท/บริการ (เช่น REPCO, CPAC, LSP)..." autocomplete="off">
+          <div class="search-results" id="search-results"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn btn-repco" id="btn-jump-repco">⚡ Jump to REPCO</button>
+        <button class="btn btn-apm" id="btn-jump-apm">★ Jump to APM</button>
+        <button class="btn" id="btn-expand">⊞</button>
+        <button class="btn" id="btn-collapse">⊟</button>
+        <button class="btn btn-primary" id="btn-reset">⟲ รีเซ็ต</button>
+      </div>
+    </header>
+
+    <div class="breadcrumb-bar" id="breadcrumb"></div>
+
+    <main>
+      <div id="tree-section">
+        <svg id="tree-svg"></svg>
+        <div class="hint">💡 คลิก Node เพื่อดูรายละเอียด · คลิก ◯ ขยาย/ย่อ · Scroll Zoom · ใช้ Search หรือปุ่ม Jump to REPCO/APM</div>
+        <div class="legend">
+          <div class="legend-title">8 Business Units</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-cement-green)"></div>1. Cement & Green Solutions</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-smart-living)"></div>2. Smart Living</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-distribution)"></div>3. Distribution & Retail</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-decor)"></div>4. Decor (SCGD) ⭐</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-scgc)"></div>5. Chemicals (SCGC)</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-scgp)"></div>6. Packaging (SCGP) ⭐</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-cleanergy)"></div>7. Cleanergy</div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--color-investment)"></div>8. Investments</div>
+          <div class="legend-section">
+            <div class="legend-title">Badges</div>
+            <div class="legend-item"><div class="legend-color" style="background: var(--badge-set)"></div>⭐ SET-Listed</div>
+            <div class="legend-item"><div class="legend-color" style="background: var(--badge-center)"></div>● Center Company</div>
+            <div class="legend-item"><div class="legend-color" style="background: var(--focus-color)"></div>★ APM Focus (เน้นพิเศษ)</div>
+          </div>
+        </div>
+        <div class="zoom-info" id="zoom-info">Zoom: 100%</div>
+      </div>
+
+      <aside id="details-panel">
+        <div class="panel-empty" id="empty-state">
+          <div class="panel-empty-icon">👆</div>
+          <div><strong>คลิก Node ใดก็ได้</strong><br><span style="font-size:13px;">หรือใช้ Search ด้านบน · หรือกด <strong>Jump to REPCO</strong> / <strong>Jump to APM</strong></span></div>
+        </div>
+        <div id="panel-content" style="display:none;"></div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    /* =========================================================
+       OFFICIAL SCG STRUCTURE (1 January 2568 / 2025)
+       Source: Image attached + scg.com/scgchemicals.com/scgpackaging.com/repconexis.com
+       ========================================================= */
+    const treeData = {
+      id: 'scg', name: 'SCG', fullName: 'บริษัทปูนซิเมนต์ไทย จำกัด (มหาชน) — Siam Cement PCL',
+      colorVar: '--color-scg', tagline: 'Passion for Inclusive Green Growth',
+      setListed: 'SCC',
+      stats: [{ label: 'ก่อตั้ง', value: 'พ.ศ. 2456' }, { label: 'บริษัทในเครือ', value: '400+' }, { label: 'พนักงาน', value: '~57,000' }, { label: 'SET', value: 'SCC' }],
+      description: 'กลุ่มอุตสาหกรรมชั้นนำของอาเซียน Holding Company จดทะเบียนในตลาดหลักทรัพย์แห่งประเทศไทย (SET: SCC) · บริหารผ่าน 8 Business Units และมีบริษัทย่อย/บริษัทร่วมกว่า 400 แห่งทั่วภูมิภาค',
+      strategicRole: 'เปลี่ยนผ่านจาก Heavy Industry สู่ ASEAN Sustainable Innovation Leader ภายใต้กรอบ ESG 4 Plus — Net Zero 2050, Go Green, ลดเหลื่อมล้ำ, ย้ำร่วมมือ + เชื่อมั่นโปร่งใส',
+      url: 'https://www.scg.com',
+      children: [
+        /* ============ BU 1: SCG CEMENT & GREEN SOLUTIONS ============ */
+        {
+          id: 'bu-cement-green', name: 'Cement & Green Solutions', fullName: 'SCG Cement & Green Solutions',
+          colorVar: '--color-cement-green', tagline: 'ปูนซีเมนต์และนวัตกรรมก่อสร้างที่เป็นมิตรกับสิ่งแวดล้อม',
+          stats: [{ label: 'Center', value: 'CPAC' }, { label: 'Net Zero', value: '2050' }],
+          description: 'หนึ่งใน 8 BUs หลักของ SCG · ผู้ผลิตปูนซีเมนต์ คอนกรีตผสมเสร็จ และผลิตภัณฑ์ก่อสร้างครบวงจร พร้อม Green Solutions ที่เป็นมิตรกับสิ่งแวดล้อม',
+          strategicRole: 'มุ่งสู่ Net Zero Cement & Concrete 2050 ผ่านปูน Low-Carbon และนวัตกรรม Green Construction',
+          children: [
+            { id: 'cpac', name: 'CPAC', fullName: 'บริษัทผลิตภัณฑ์และวัตถุก่อสร้าง จำกัด', colorVar: '--color-cement-green', tagline: 'ศูนย์กลางธุรกิจ Cement & Green Solutions', isCenter: true, description: 'บริษัทศูนย์กลางของธุรกิจ Cement & Green Solutions · บริหารบริษัทย่อยและบริษัทร่วมในกลุ่ม · ผู้นำคอนกรีตผสมเสร็จในไทย' },
+            { id: 'scg-kk', name: 'Siam Cement Kaeng Khoi', colorVar: '--color-cement-green', tagline: 'โรงปูนแก่งคอย', description: 'โรงปูนซีเมนต์ที่แก่งคอย จังหวัดสระบุรี' },
+            { id: 'scg-tl', name: 'Siam Cement Ta Luang', colorVar: '--color-cement-green', tagline: 'โรงปูนตาหลวง', description: 'โรงปูนซีเมนต์ที่ตาหลวง จังหวัดสระบุรี' },
+            { id: 'scg-ts', name: 'Siam Cement Thung Song', colorVar: '--color-cement-green', tagline: 'โรงปูนทุ่งสง', description: 'โรงปูนซีเมนต์ที่ทุ่งสง จังหวัดนครศรีธรรมราช' },
+            { id: 'scg-lp', name: 'Siam Cement Lampang', colorVar: '--color-cement-green', tagline: 'โรงปูนลำปาง', description: 'โรงปูนซีเมนต์ที่ลำปาง' },
+            { id: 'cementhai-cp', name: 'Cementhai Concrete Products', colorVar: '--color-cement-green', tagline: 'ผลิตภัณฑ์คอนกรีต', description: 'ผลิตและจัดจำหน่ายผลิตภัณฑ์คอนกรีตสำเร็จรูป' },
+            { id: 'pt-semen-jawa', name: 'PT Semen Jawa', colorVar: '--color-cement-green', tagline: 'โรงปูนในอินโดนีเซีย', description: 'โรงปูนที่ Sukabumi กำลังผลิต 1.8 ล้านตัน/ปี (ตั้งแต่ 2015) · แบรนด์ Semen SCG + Bezt Eco Friendly Cement' },
+            { id: 'scg-cbm-vn', name: 'SCG CBM Vietnam', colorVar: '--color-cement-green', tagline: 'โรงปูนเวียดนาม', description: 'โรงปูนและวัสดุก่อสร้างในเวียดนาม' }
+          ]
+        },
+        /* ============ BU 2: SCG SMART LIVING ============ */
+        {
+          id: 'bu-smart-living', name: 'Smart Living', fullName: 'SCG Smart Living',
+          colorVar: '--color-smart-living', tagline: 'นวัตกรรมที่อยู่อาศัยและวัสดุก่อสร้างอัจฉริยะ',
+          stats: [{ label: 'Center', value: 'SCG CBM' }],
+          description: 'BU ที่ผลิตวัสดุก่อสร้างและระบบสำหรับที่อยู่อาศัย — หลังคา ฝ้า/ผนัง ฉนวนไฟเบอร์กลาส ไม้สังเคราะห์ Landscape คอนกรีตมวลเบา ระบบผนัง และ Smart Home Solutions',
+          strategicRole: 'ยกระดับคุณภาพชีวิตด้วยนวัตกรรมที่อยู่อาศัย ประหยัดพลังงาน และ Smart Home',
+          children: [
+            { id: 'scg-cbm', name: 'SCG CBM', fullName: 'บริษัทเอสซีจี ซีเมนต์-ผลิตภัณฑ์ก่อสร้าง จำกัด', colorVar: '--color-smart-living', tagline: 'ศูนย์กลางธุรกิจ Smart Living', isCenter: true, description: 'บริษัทศูนย์กลางของธุรกิจ Smart Living · บริหารบริษัทย่อยและบริษัทร่วมในกลุ่ม' },
+            { id: 'cpac-roof', name: 'CPAC Roof', colorVar: '--color-smart-living', tagline: 'กระเบื้องหลังคา', description: 'กระเบื้องหลังคาคอนกรีตและซีเมนต์ภายใต้แบรนด์ CPAC' },
+            { id: 'cotto-roof', name: 'COTTO Building', colorVar: '--color-smart-living', tagline: 'COTTO Building Solutions', description: 'หลังคาและวัสดุก่อสร้างภายใต้แบรนด์ COTTO' },
+            { id: 'scg-living-sol', name: 'SCG Living Solutions', colorVar: '--color-smart-living', tagline: 'Smart Home Innovation', description: 'Smart Insulation, Smart Ventilation, ระบบบ้านประหยัดพลังงาน' },
+            { id: 'stark-inv', name: 'Stark Innovation', colorVar: '--color-smart-living', tagline: 'ไฟเบอร์ซีเมนต์', description: 'ไฟเบอร์ซีเมนต์บอร์ดและไม้สังเคราะห์' }
+          ]
+        },
+        /* ============ BU 3: SCG DISTRIBUTION & RETAIL ============ */
+        {
+          id: 'bu-distribution', name: 'Distribution & Retail', fullName: 'SCG Distribution & Retail',
+          colorVar: '--color-distribution', tagline: 'จัดจำหน่ายและค้าปลีกวัสดุก่อสร้าง · Global Sourcing',
+          stats: [{ label: 'Center', value: 'SCG Dist' }],
+          description: 'BU ที่จัดจำหน่ายและค้าปลีกผลิตภัณฑ์ของ SCG ผ่านเครือข่ายทั้งในและต่างประเทศ — รวมถึง Global Sourcing & Trading',
+          children: [
+            { id: 'scg-dist', name: 'SCG Dist', fullName: 'บริษัทเอสซีจี ดิสทริบิวชั่น จำกัด', colorVar: '--color-distribution', tagline: 'ศูนย์กลางธุรกิจ Distribution & Retail', isCenter: true, description: 'บริษัทศูนย์กลางของธุรกิจ Distribution & Retail · บริหารบริษัทย่อยและบริษัทร่วมในกลุ่ม' },
+            { id: 'scg-international', name: 'SCG International', colorVar: '--color-distribution', tagline: 'Global Sourcing & Trading', description: 'Global Sourcing & Distribution Partner · 4 Business Lines: Construction Materials, Pulp & Paper, Chemicals, Industrial Goods', url: 'https://scginternational.com' },
+            { id: 'scg-home', name: 'SCG HOME', colorVar: '--color-distribution', tagline: 'เครือข่ายร้านค้าปลีกวัสดุก่อสร้าง', description: 'SCG HOME / SCG Home Experience — เครือข่ายร้านค้าปลีก Franchise วัสดุก่อสร้างและตกแต่งบ้าน' },
+            { id: 'scg-elog', name: 'SCG eLogistics', colorVar: '--color-distribution', tagline: 'แพลตฟอร์มออนไลน์', description: 'แพลตฟอร์ม Online B2C สำหรับสั่งซื้อและจัดส่งวัสดุก่อสร้าง' },
+            { id: 'boonthavorn', name: 'Boonthavorn', colorVar: '--color-distribution', tagline: 'Home Improvement Retail (JV)', description: 'Strategic Partnership/JV — Home Improvement Retail รายใหญ่ของไทย' },
+            { id: 'scg-dist-id', name: 'SCG Distribution & Retail Indonesia', colorVar: '--color-distribution', tagline: 'การจัดจำหน่ายในอินโดนีเซีย', description: 'บริษัทย่อยในอินโดนีเซียดูแลตลาด Cement และ Building Materials' }
+          ]
+        },
+        /* ============ BU 4: SCG DECOR (SCGD) ⭐ SET-LISTED ============ */
+        {
+          id: 'bu-decor', name: 'Decor (SCGD)', fullName: 'SCG Decor PCL',
+          colorVar: '--color-decor', tagline: 'กระเบื้อง สุขภัณฑ์ และวัสดุตกแต่ง · SET-Listed',
+          setListed: 'SCGD', isCenter: true,
+          stats: [{ label: 'ตลาด', value: 'SET: SCGD' }, { label: 'Center', value: 'SCGD' }],
+          description: 'บริษัทเอสซีจี เดคคอร์ จำกัด (มหาชน) — จดทะเบียนในตลาดหลักทรัพย์แห่งประเทศไทย (SET: SCGD) · เป็น Center Company ของกลุ่ม Decor และบริหารบริษัทย่อยในประเทศและภูมิภาค',
+          strategicRole: 'ผู้นำกระเบื้องและสุขภัณฑ์ครอบคลุม ASEAN ผ่านแบรนด์ COTTO, Sosuco, Campana, KIA, Mariwasa, PRIME',
+          url: 'https://www.scgdecor.com',
+          children: [
+            { id: 'scg-ceramics', name: 'SCG Ceramics', colorVar: '--color-decor', tagline: 'กระเบื้องในไทย', description: 'ผลิตและจำหน่ายกระเบื้องภายใต้แบรนด์ COTTO, Sosuco, Campana' },
+            { id: 'cotto', name: 'COTTO', colorVar: '--color-decor', tagline: 'สุขภัณฑ์และกระเบื้อง Premium', description: 'แบรนด์ Premium สำหรับสุขภัณฑ์ ก๊อกน้ำ และกระเบื้องตกแต่ง' },
+            { id: 'kia-ceramic', name: 'PT KIA Ceramic', colorVar: '--color-decor', tagline: 'กระเบื้องในอินโดนีเซีย', description: 'PT Keramika Indonesia Asosiasi (KIA) + PT KIA Keramik Mas — ผู้ผลิตกระเบื้องในอินโดนีเซีย' },
+            { id: 'mariwasa', name: 'Mariwasa Siam Ceramics', colorVar: '--color-decor', tagline: 'กระเบื้องในฟิลิปปินส์', description: 'ผู้ผลิตกระเบื้องรายใหญ่ในฟิลิปปินส์' },
+            { id: 'prime-vn', name: 'PRIME Group', colorVar: '--color-decor', tagline: 'กระเบื้องในเวียดนาม', description: 'PRIME Group — ผู้ผลิตกระเบื้องในเวียดนาม' }
+          ]
+        },
+        /* ============ BU 5: SCG CHEMICALS (SCGC) ============ */
+        {
+          id: 'bu-scgc', name: 'Chemicals (SCGC)', fullName: 'SCG Chemicals PCL',
+          colorVar: '--color-scgc', tagline: 'ผู้นำนวัตกรรมเคมีภัณฑ์ที่ยั่งยืนในอาเซียน',
+          isCenter: true,
+          stats: [{ label: 'Center', value: 'SCGC' }, { label: 'Green Polymer', value: '200K t/y' }, { label: 'ฐานหลัก', value: 'TH/VN/ID' }],
+          description: 'บริษัทเอสซีจี เคมิคอลส์ จำกัด (มหาชน) — Public Company Limited (ปัจจุบันยังไม่ได้จดทะเบียนใน SET) · Center Company ของกลุ่ม Chemicals · ผลิต PE/PP/PVC ครบวงจร · ต้นสังกัดของ REPCO (REPCO NEX)',
+          strategicRole: 'ขับเคลื่อน Circular Economy ผ่าน Green Polymer 200K ตัน/ปี ภายใน 2025 · ผลักดัน Industry 5.0 ผ่าน DRS by REPCO NEX',
+          url: 'https://www.scgchemicals.com',
+          children: [
+            /* SCGC: 4 Divisions */
+            {
+              id: 'scgc-olefins', name: 'Olefins Chain', fullName: 'Olefins Chain (Thailand)', colorVar: '--color-olefins',
+              tagline: 'Upstream → Downstream Olefins', description: 'แกนหลักของ Petrochemicals ของ SCGC · ครอบคลุม Upstream Olefins, Downstream Polyolefins, Infrastructure และ Petrochemicals Complex (LSP เวียดนาม)',
+              children: [
+                { id: 'roc', name: 'ROC', fullName: 'Rayong Olefins', colorVar: '--color-olefins', tagline: 'Upstream Olefins', description: 'โรง Olefins ที่ระยอง — Upstream ของ Polyolefins Chain' },
+                { id: 'moc', name: 'MOC', fullName: 'Map Ta Phut Olefins', colorVar: '--color-olefins', tagline: 'Upstream Olefins', description: 'โรง Olefins ที่มาบตาพุด · กำลังการผลิตขนาดใหญ่' },
+                { id: 'tpe', name: 'TPE', fullName: 'Thai Polyethylene', colorVar: '--color-olefins', tagline: 'Downstream Polyolefins', description: 'ผู้ผลิต Polyethylene รายใหญ่ในไทย · ผลิต HDPE, LLDPE, LDPE' },
+                { id: 'scgc-ico', name: 'SCGC ICO Polymers', colorVar: '--color-olefins', tagline: 'Downstream Polyolefins', description: 'ผู้ผลิต Polymer พิเศษและ Specialty Polymers' },
+                { id: 'mtt', name: 'MTT', fullName: 'Map Ta Phut Tank Terminal', colorVar: '--color-olefins', tagline: 'Infrastructure', description: 'คลังเก็บผลิตภัณฑ์ของเหลวที่มาบตาพุด' },
+                { id: 'rpl', name: 'RPL', fullName: 'Rayong Pipeline', colorVar: '--color-olefins', tagline: 'Infrastructure', description: 'ระบบไปป์ไลน์เชื่อมโยงโรงงานปิโตรเคมีในระยอง' },
+                { id: 'lsp', name: 'LSP', fullName: 'Long Son Petrochemicals (Vietnam)', colorVar: '--color-olefins', tagline: 'Petrochemicals Complex แห่งแรกของเวียดนาม ⭐', description: 'Long Son Petrochemicals — โครงการ Petrochemicals Complex แบบบูรณาการแห่งแรกของเวียดนาม · เปิดดำเนินการปี 2025', url: 'https://www.lsp.com.vn' }
+              ]
+            },
+            {
+              id: 'scgc-vinyl', name: 'Vinyl', fullName: 'Vinyl Chain (PVC)', colorVar: '--color-vinyl',
+              tagline: 'PVC ครบวงจร — Resin → Compound → Finished Products', description: 'กลุ่ม PVC ครบวงจร · ครอบคลุม Resin, Compound และ Finished Products (ท่อ PVC)',
+              children: [
+                { id: 'tpc', name: 'TPC', fullName: 'Thai Plastic and Chemicals PCL', colorVar: '--color-vinyl', tagline: 'PVC Resin', description: 'ผู้ผลิต PVC Resin รายใหญ่ในไทย' },
+                { id: 'tpc-vina', name: 'TPC Vina', colorVar: '--color-vinyl', tagline: 'PVC Resin (Vietnam)', description: 'TPC Vina Plastic and Chemical — ผู้ผลิต PVC ในเวียดนาม' },
+                { id: 'tpc-indo', name: 'PT TPC Indo', colorVar: '--color-vinyl', tagline: 'PVC Resin (Indonesia)', description: 'PT TPC Indo Plastic and Chemicals' },
+                { id: 'tpr', name: 'TPR', fullName: 'TPC Paste Resin', colorVar: '--color-vinyl', tagline: 'PVC Paste Resin', description: 'ผู้ผลิต PVC Paste Resin' },
+                { id: 'vtpc', name: 'VTPC', fullName: 'Viet-Thai Plastchem', colorVar: '--color-vinyl', tagline: 'PVC Compound', description: 'ผู้ผลิต PVC Compound ใน Vietnam' },
+                { id: 'npi', name: 'Nawaplastic (NPI)', colorVar: '--color-vinyl', tagline: 'PVC Pipes & Fittings', description: 'Nawaplastic Industries (1970) · แบรนด์ SCG Pipes, Chang NPI Pipes, Tiger NPI Pipes', url: 'https://www.npi-pipe.com' },
+                { id: 'bmp', name: 'BMP', fullName: 'Binh Minh Plastics', colorVar: '--color-vinyl', tagline: 'PVC Pipes (Vietnam) ⭐ Listed', description: 'Binh Minh Plastics JSC — ผู้ผลิตท่อ PVC รายใหญ่ของเวียดนาม จดทะเบียนใน HOSE' },
+                { id: 'nbm', name: 'NBM', fullName: 'North Binh Minh Plastics', colorVar: '--color-vinyl', tagline: 'PVC Pipes (North Vietnam)', description: 'North Binh Minh Plastics Limited Company' },
+                { id: 'bni', name: 'BNI', fullName: 'Berjaya Nawaplastic Indonesia', colorVar: '--color-vinyl', tagline: 'PVC Pipes (Indonesia)', description: 'PT Berjaya Nawaplastic Indonesia' },
+                { id: 'npi-kh', name: 'NPI Cambodia', colorVar: '--color-vinyl', tagline: 'PVC Pipes (Cambodia)', description: 'Nawaplastic (Cambodia) Co., Ltd.' },
+                { id: 'gnm', name: 'GNM', fullName: 'Grand Nawaplastic Myanmar', colorVar: '--color-vinyl', tagline: 'PVC Pipes (Myanmar)', description: 'Grand Nawaplastic Myanmar Co., Ltd.' },
+                { id: 'da-nang-plastics', name: 'Da Nang Plastics', colorVar: '--color-vinyl', tagline: 'PVC Pipes (Vietnam)', description: 'Da Nang Plastics Joint Stock Company' },
+                { id: 'tps', name: 'TPS', fullName: 'Total Plant Service', colorVar: '--color-vinyl', tagline: 'Holding', description: 'Holding Company ของกลุ่ม Vinyl' }
+              ]
+            },
+            {
+              id: 'scgc-other', name: 'Other Businesses', colorVar: '--color-other-biz',
+              tagline: 'Trading · Technology · Recycling · Service · Plastic Compound',
+              description: 'กลุ่มธุรกิจอื่น ๆ ของ SCGC ครอบคลุม Trading, Technology R&D, Recycling, **Service/Solution (REPCO อยู่ที่นี่!)** และ Plastic Compound',
+              children: [
+                { id: 'scgchts', name: 'SCGCHTS', fullName: 'SCG Chemicals Trading (Singapore)', colorVar: '--color-other-biz', tagline: 'Sourcing/Trading', description: 'SCG Chemicals Trading Singapore — ศูนย์กลาง Sourcing/Trading' },
+                { id: 'nps', name: 'PT NPS', fullName: 'Nusantara Polymer Solutions', colorVar: '--color-other-biz', tagline: 'Sourcing/Trading (Indonesia)', description: 'PT Nusantara Polymer Solutions — Trading ในอินโดนีเซีย' },
+                { id: 'scg-chem-plc', name: 'SCG Chemicals PLC', colorVar: '--color-other-biz', tagline: 'Holding', description: 'Holding Company หลักของ SCGC' },
+                { id: 'scg-chem-sg', name: 'SCG Chem Singapore', colorVar: '--color-other-biz', tagline: 'Holding (Singapore)', description: 'SCG Chemicals Singapore Pte. Ltd.' },
+                { id: 'tuban-petro', name: 'Tuban Petrochemicals', colorVar: '--color-other-biz', tagline: 'Holding', description: 'Tuban Petrochemicals Pte. Ltd.' },
+                { id: 'wte', name: 'WTE', fullName: 'WTE Company Limited', colorVar: '--color-other-biz', tagline: 'Holding', description: 'WTE Company Ltd.' },
+                { id: 'texplore', name: 'TEXPLORE', colorVar: '--color-other-biz', tagline: 'R&D Technology', description: 'บริษัทวิจัยและพัฒนาเทคโนโลยีเคมีของ SCGC' },
+                { id: 'smh', name: 'SMH', colorVar: '--color-other-biz', tagline: 'Technology', description: 'SMH Co., Ltd.' },
+                { id: 'senfi', name: 'SENFI Group', colorVar: '--color-other-biz', tagline: 'Breakthrough Materials (UK/Swiss/Norway)', description: 'SENFI UK, SENFI Swiss, SENFI Norway — Breakthrough Materials & Sustainable Chemistry (founded 2019)', url: 'https://senfi.net' },
+                { id: 'norner', name: 'NORNER', colorVar: '--color-other-biz', tagline: 'Polymer Research (Norway)', description: 'NORNER AS + Norner Research AS — ศูนย์วิจัย Polymer ในนอร์เวย์' },
+                { id: 'scgn-as', name: 'SCGN AS', colorVar: '--color-other-biz', tagline: 'Technology (Norway)', description: 'SCGN AS — บริษัทเทคโนโลยีในนอร์เวย์' },
+                { id: 'xplore', name: 'Xplore', colorVar: '--color-other-biz', tagline: 'Material Innovation (Italy)', description: 'Xplore S.r.l. (Italy)' },
+                { id: 'vscg', name: 'VSCG', fullName: 'Vina SCG Chemicals', colorVar: '--color-other-biz', tagline: 'Technology (Vietnam)', description: 'Vina SCG Chemicals Ltd.' },
+                { id: 'cirplas', name: 'CirPlas', fullName: 'Circular Plas', colorVar: '--color-other-biz', tagline: 'Plastic Recycling', description: 'Circular Plas — รีไซเคิลพลาสติก' },
+                { id: 'sirplaste', name: 'Sirplaste', colorVar: '--color-other-biz', tagline: 'Plastic Recycling (Portugal)', description: 'Sirplaste — ผู้นำรีไซเคิลพลาสติกในโปรตุเกส กำลังผลิต 45,000 ตัน/ปี', url: 'https://sirplaste.pt' },
+                { id: 'kras', name: 'Kras Recycling', colorVar: '--color-other-biz', tagline: 'Recycling (Netherlands)', description: 'Kras Recycling Holding Volendam BV — ผู้รีไซเคิลในเนเธอร์แลนด์ (>70 ปี)', url: 'https://www.kras-recycling.com' },
+                /* Service/Solution & Others — REPCO อยู่ที่นี่ */
+                {
+                  id: 'scgc-service-solution', name: 'Service/Solution & Others', colorVar: '--color-other-biz',
+                  tagline: '⭐ REPCO + บริษัทบริการในกลุ่ม',
+                  description: 'กลุ่มบริการและโซลูชั่นภายใต้ SCGC · ที่นี่คือต้นทางของ REPCO NEX และบริษัทบริการในเครือ',
+                  children: [
+                    {
+                      id: 'repco', name: 'REPCO (REPCO NEX)', fullName: 'Rayong Engineering & Plant Service / REPCO NEX Industrial Solutions',
+                      colorVar: '--color-repco', tagline: 'Your Trustworthy Industry Solutions Partner',
+                      stats: [{ label: 'ประสบการณ์', value: '40+ ปี' }, { label: 'Plants', value: '20+' }, { label: 'Critical Assets', value: '5,000+' }, { label: 'MD', value: 'Pichet T.' }],
+                      description: 'บริษัทย่อยของ SCGC · ก่อตั้งปี 1983 ในฐานะ Maintenance Dept ของ Chemicals · จดทะเบียนเป็น Rayong Engineering & Plant Service ปี 2001 · ยกระดับเป็น REPCO NEX Industrial Solutions ในปี 2020 · One-Stop Service ครอบคลุม 7 อุตสาหกรรม',
+                      strategicRole: 'Vision: World Class Service Company in ASEAN · Certifications: VDI, ME Scope, Energy Institute, API, NACE · Strategic Partnership: AVEVA (Digital Reliability Platform) — Best Asset Monitoring Award 2021, AVEVA Partner Excellence 2026 · Milestones: CiBot 2012, CORROTEX 2016, Modular Construction 4th Gen 2017, Smart Power Plant TH 2023 / PH 2024',
+                      url: 'https://www.repconexis.com',
+                      children: [
+                        {
+                          id: 'we-build', name: 'WE BUILD', fullName: 'Engineering, Procurement & Construction', colorVar: '--color-build',
+                          tagline: 'EPC ระดับ World-class', description: 'บริการก่อสร้างและวิศวกรรมครบวงจร · Project Management → Engineering Design → Procurement → Construction',
+                          strategicRole: '4th Gen Modular Construction ลดเวลาก่อสร้างเหลือ < 2 เดือน',
+                          url: 'https://www.repconexis.com/en/servicescategory/250',
+                          children: [
+                            { id: 'engineering-construction', name: 'Engineering & Construction', colorVar: '--color-build', tagline: 'หมวดหลักของ WE BUILD', description: 'หมวดหลักครอบคลุม Engineering, PM, Construction', url: 'https://www.repconexis.com/en/servicescategory/250', children: [
+                              { id: 'engineering', name: 'Engineering', colorVar: '--color-build', tagline: 'งานออกแบบทางวิศวกรรม', description: 'Engineering Solutions/Technology/Services/Products', url: 'https://www.repconexis.com/en/servicescategorysubchild/330', children: [
+                                { id: 'eng-solutions', name: 'Engineering Solutions', colorVar: '--color-build', tagline: 'โซลูชั่นทางวิศวกรรม', description: 'ออกแบบโซลูชั่นเฉพาะตามความต้องการ', url: 'https://www.repconexis.com/en/services/359' },
+                                { id: 'eng-technology', name: 'Engineering Technology', colorVar: '--color-build', tagline: 'เทคโนโลยีทางวิศวกรรม', description: 'เทคโนโลยีล่าสุดในงานวิศวกรรม', url: 'https://www.repconexis.com/en/services/361' },
+                                { id: 'eng-services', name: 'Engineering Services', colorVar: '--color-build', tagline: 'Consulting, Design Review, FEED', description: 'บริการที่ปรึกษาทางวิศวกรรม', url: 'https://www.repconexis.com/en/services/360' },
+                                { id: 'eng-products', name: 'Engineering Products', colorVar: '--color-build', tagline: 'ผลิตภัณฑ์ทางวิศวกรรม', description: 'ผลิตภัณฑ์ที่พัฒนาเอง', url: 'https://www.repconexis.com/en/services/358' }
+                              ]},
+                              { id: 'pm', name: 'Project Management', colorVar: '--color-build', tagline: 'การบริหารโครงการ', description: 'Project Feasibility, PMC, EPC', url: 'https://www.repconexis.com/en/servicescategorysubchild/329', children: [
+                                { id: 'project-feasibility', name: 'Project Feasibility', colorVar: '--color-build', tagline: 'ศึกษาความเป็นไปได้', description: 'Technical และ Financial Feasibility Study', url: 'https://www.repconexis.com/en/services/364' },
+                                { id: 'pmc', name: 'PMC / PMCm', colorVar: '--color-build', tagline: 'Project Management Consultancy', description: 'PMC สำหรับโครงการขนาดใหญ่ เช่น Tank Farm @Rayong Terminal', url: 'https://www.repconexis.com/en/services/363' },
+                                { id: 'epc', name: 'EPC / EPCm Services', colorVar: '--color-build', tagline: 'Turnkey EPC + Modular', description: 'EPC/EPCm Services รวม 4th Gen Modular Construction', url: 'https://www.repconexis.com/en/services/362' }
+                              ]},
+                              { id: 'construction-svc', name: 'Construction', colorVar: '--color-build', tagline: 'งานก่อสร้างหน้างาน', description: 'Installation และ Inspection หน้างาน', url: 'https://www.repconexis.com/en/servicescategorysubchild/477', children: [
+                                { id: 'installation', name: 'Installation', colorVar: '--color-build', tagline: 'งานติดตั้ง', description: 'ติดตั้งเครื่องจักร ระบบท่อ และอุปกรณ์', url: 'https://www.repconexis.com/en/services/478' },
+                                { id: 'inspection-construction', name: 'Inspection', colorVar: '--color-build', tagline: 'ตรวจสอบหน้างาน', description: 'QA/QC หน้างานก่อสร้าง', url: 'https://www.repconexis.com/en/services/479' }
+                              ]}
+                            ]}
+                          ]
+                        },
+                        {
+                          id: 'we-maintain', name: 'WE MAINTAIN', colorVar: '--color-maintain',
+                          tagline: 'Maintenance & Reliability Solutions', description: 'บริการบำรุงรักษาโรงงานและ Asset โดยผู้เชี่ยวชาญและเทคโนโลยี World-class',
+                          url: 'https://www.repconexis.com/en/servicescategory/256',
+                          children: [
+                            { id: 'license-operate', name: 'Secure License to Operate', colorVar: '--color-maintain', tagline: 'รักษาใบอนุญาตเดินเครื่อง', description: 'ตรวจสอบและบำรุงตามมาตรฐานความปลอดภัยและสิ่งแวดล้อม', url: 'https://www.repconexis.com/en/servicescategorysubchild/332', children: [
+                              { id: 'process-safety', name: 'Process Safety Management', colorVar: '--color-maintain', tagline: 'PSM Service', description: 'PSM ตามมาตรฐาน OSHA/CCPS ป้องกัน Major Accident', url: 'https://www.repconexis.com/en/services/368' }
+                            ]},
+                            { id: 'basic-conditions', name: 'Return to Basic Conditions', colorVar: '--color-maintain', tagline: 'คืนสภาพมาตรฐานเดิม', description: 'Overhaul, Turnaround และคืนสภาพเครื่องจักร', url: 'https://www.repconexis.com/en/servicescategorysubchild/331', children: [
+                              { id: 'mechanical-services', name: 'Mechanical Services', colorVar: '--color-maintain', tagline: 'บริการงานเครื่องกล', description: 'Repair, Overhaul, Replacement', url: 'https://www.repconexis.com/en/services/367' }
+                            ]}
+                          ]
+                        },
+                        {
+                          id: 'we-maximize', name: 'WE MAXIMIZE', colorVar: '--color-maximize',
+                          tagline: 'APM ภายใต้ DRS Brand', description: 'บริการ Digital + Asset Performance Management ทั้งหมดของ REPCO NEX อยู่ที่นี่ ภายใต้ Partnership "DRS" กับ AVEVA',
+                          strategicRole: '↑ Productivity 10-30% · ↓ Downtime 50-90% · ↑ Asset Life 30-50% · ↑ Safety 30-50% · AVEVA Partner Excellence 2026 · Huawei Global Summit 2025 (2 รางวัล)',
+                          url: 'https://www.repconexis.com/en/servicescategory/258',
+                          children: [
+                            { id: 'asset-integrity', name: 'Ensure Asset Integrity', colorVar: '--color-maximize', tagline: 'รักษาความสมบูรณ์ของ Asset', description: '7 sub-solutions ครอบคลุม Corrosion, Piping, NDT, Vibration, Electrical, Furnace/Boiler, Heat Exchanger', url: 'https://www.repconexis.com/en/servicescategorysubchild/355', children: [
+                              { id: 'corrosion-solution', name: 'Corrosion Solution', colorVar: '--color-maximize', tagline: 'FFS Level 3 + 7 Packages (CUS/CUI/RBI)', description: 'Official: End-to-end service for managing static equipment · 40+ years field experience · Mechanical Integrity assessment with FFS Level 3 using FEA+CFD · Pipe lift-up technology for CUS · CUI monitoring system + Digital IoT sensors (CORROTEX™) · 7 Packages: RCA & MI Assessment, Reliability System Assessment, RBI Quantitative, CUS Solution (100x cheaper than cutting & dropping), CUI Management (5x detectability, Zero leak), Flanged Joint Care, Non-Metallic Management · 1,000+ success cases · NACE/API/ASNT certified', url: 'https://www.repconexis.com/en/services/387' },
+                              { id: 'piping-solution', name: 'Piping & Pipeline Solution', colorVar: '--color-maximize', tagline: 'Full Lifecycle + RBI + Cathodic Protection', description: 'Official: Services along piping & pipeline asset life cycle — engineering design, procurement, construction, inspection, maintenance, reliability strategy, digitization · ครอบคลุม Aboveground และ Underground piping · Risk-Based Inspection, Direct Assessment, Cathodic Protection Assessment, Pipeline Corrosion Integrity Management · 40 years + API/NACE/ASNT certified · Compliant with Thai law and international standards', url: 'https://www.repconexis.com/en/services/380' },
+                              { id: 'inspection-ndt', name: 'Inspection & NDT Services', colorVar: '--color-maximize', tagline: 'Conventional + Advanced + Robotic NDT', description: 'Official: 40+ years experience + ASNT/API/NACE certified · ครอบคลุมทุก Machine Type: Static, Rotating, Electrical, Instrument · Techniques: MT, PT, UT, RT, VT, AE, IR, tube inspection · Robotics: UAV (drones), submersed inspection robot, tank wall thickness robot · Machine vibration measurement, motor current analysis, partial discharge · ITP (Inspection & Test Plan) แบบ One-stop service สำหรับ Thai law equipment (inspection + reporting + government permit)', url: 'https://www.repconexis.com/en/services/377' },
+                              { id: 'vibration-solution', name: 'Vibration Solution', colorVar: '--color-maximize', tagline: 'SRoDTex + Cat IV Analyst + 20,000 Cases', description: 'Official: Vibration troubleshooting covering rotating equipment, piping และ structure systems · Unique patented innovation SRoDTex (Slow Rotation Diagnostic Technology) — bearing fault detection ใน low-speed machines (<600 rpm, 6 months early detection) · Certified Vibration Analyst Category IV + Turbo-Machinery Specialist · 20,000+ reference cases, 65+ plants, saving > 100 MB/year · 4 Packages: Measurement & Analysis, Advanced Machinery Diagnostic, SRoDTex (200 units installed), Piping/Structure Vibration · ใช้ผลิตภัณฑ์ RVS', url: 'https://www.repconexis.com/en/services/379' },
+                              { id: 'electrical-solution', name: 'Electrical Solution', colorVar: '--color-maximize', tagline: 'Patented Real-time + Predictive + Lightning', description: 'Official: State-of-the-art predictive maintenance + end-to-end service · Patented real-time monitoring system + predictive analytic algorithm · ครอบคลุม Power Transformer, Power Cable, Electric Motor, VSD · Benefits: -30% maintenance cost, -75% breakdowns, -45% downtime, 10x ROI · Power Transformer: Duval Triangle, Auto-DGA, Furanic/DP paper aging · Power Cable: Partial Discharge, VLF Tan-delta, water treeing detection · Motor: 8 failure types · Lightning Protection: DAS, Chem-Rod™, RGA750™ + Rolling Sphere IEC62305 · VSD Reliability Solutions · ใช้ Smart Motor + AI Motor Sensor', url: 'https://www.repconexis.com/en/services/378' },
+                              { id: 'furnace-boiler', name: 'Furnace & Boiler Solution', colorVar: '--color-maximize', tagline: 'Inspection Robots + FEA + CFD + Data Science', description: 'Official: End-to-end solution provider for furnace and boiler integrity · Combines maintenance/inspection/reliability expertise with cutting-edge technologies: inspection robots (CiBot™), Finite Element Analysis (FEA), Computational Fluid Dynamics (CFD), and data science · Track record on 50+ units of furnaces and boilers · ลด Shutdown Window > 50%', url: 'https://www.repconexis.com/en/services/384' },
+                              { id: 'heat-exchanger', name: 'Heat Exchanger Solution', colorVar: '--color-maximize', tagline: 'Life Cycle Management + Digital Reliability Platform', description: 'Official: End-to-end heat exchanger management solutions and advanced maintenance technology · 40 years of experience in heat exchanger maintenance and engineering · Life cycle management combined with Digital Reliability Platform → enhanced reliability, extended equipment life, cost-effectiveness', url: 'https://www.repconexis.com/en/services/386' }
+                            ]},
+                            { id: 'automated-care', name: 'Automated Asset Care', colorVar: '--color-maximize', tagline: 'ดูแล Asset อัตโนมัติ', description: 'IoT + Robot + Simulation ลดการเข้าตรวจหน้างาน · หมวดหลักของ DRS Smart Maintenance', url: 'https://www.repconexis.com/en/servicescategorysubchild/353', children: [
+                              { id: 'iot-sensor', name: 'IoT Sensor Solution', colorVar: '--color-maximize', tagline: '"If you can\'t measure it, you can\'t improve it"', description: 'Official: ปรัชญา "If you can\'t measure it, you can\'t improve it" - Peter Drucker · Real-time data for problem detection at early stages → highly effective and low-cost countermeasures · Optimized IoT solutions with flexible connectivity to various platforms · 40 years of experience with IoT technology + own developed robotics · ใช้ผลิตภัณฑ์ DRS: AI Vibration Sensor, AI Motor Sensor, CORROTEX™ IoT CUI Sensor, RVS, Smart Motor — ส่งข้อมูลขึ้น Cloud Platform', url: 'https://www.repconexis.com/en/services/375' },
+                              { id: 'robotic-automation', name: 'Robotic & Automation Solution', colorVar: '--color-maximize', tagline: 'CiBot + Drones + Underwater Robots', description: 'Official: Safe, efficient, accurate data ผ่าน robotic and automated technology → minimize risk of injury and process downtime · Robotic solutions ครอบคลุม: Coil Inspection (CiBot™), Flare Inspection (drones), Boiler Tube Inspection Robot, Jetty Piles Visualization (underwater robots) · Customizable to customer requirements · ทดแทนงานเสี่ยงของคน + ลด Shutdown Window > 50%', url: 'https://www.repconexis.com/en/services/376' },
+                              { id: 'simulation', name: 'Solid & Fluid Simulation Solution', colorVar: '--color-maximize', tagline: 'FEA + CFD + High Performance Computer (HPC)', description: 'Official: Engineering solutions และ consultations โดยใช้ integrated capabilities ของ Finite Element Analysis (FEA) + Computational Fluid Dynamics (CFD) with High Performance Computer (HPC) → innovative และ practical solutions สำหรับ complex problems · ใช้สำหรับ: Design Verification & Optimization, Plant Capacity Maximization, Mechanical Integrity Assessment (Fitness for Service Level 3) · Digital Twin Simulation Pilot (เริ่มปี 2009) · ใช้ใน AboitizPower Boiler Lifetime Forecasting (2024)', url: 'https://www.repconexis.com/en/services/374' }
+                            ]},
+                            { id: 'performance-max', name: 'Asset Performance Maximization', fullName: 'APM — แกนหลักของ DRS Platform', focus: true, colorVar: '--color-maximize', tagline: '⭐ จุด Focus หลักของ Dashboard', description: 'แกนหลักของ DRS Platform — รวม 4 Digital Solutions: Predictive Analytics (ทำนายล่วงหน้า), Asset Information Management (จัดการข้อมูล), Unified Operations Center (บ้านของ UHM), และ Smart Workforce (ทีมงานยุคใหม่)', strategicRole: 'ผลลัพธ์ทางธุรกิจ: ↑ Productivity 10-30% · ↓ Downtime 50-90% · ↑ Asset Life 30-50% · ↑ Safety 30-50% · ได้รับรางวัล AVEVA Partner Excellence 2026, Huawei Global Summit 2025 (2 รางวัล)', url: 'https://www.repconexis.com/en/servicescategorysubchild/351', children: [
+                              { id: 'predictive-analytics', name: 'Predictive Analytics Solution', focus: true, colorVar: '--color-maximize', tagline: 'แจ้งเตือนล่วงหน้าหลายเดือนก่อนเครื่องเสีย', description: 'บริการวิเคราะห์เชิงทำนาย (Predictive Analytics) ที่แจ้งเตือนล่วงหน้าได้หลายเดือนก่อนที่ Asset จะเกิดความเสียหาย · ผสาน Digital Technology ระดับ State-of-the-art กับประสบการณ์ Domain Expertise 40 ปี · เพิ่ม Asset Reliability และควบคุม Cost · เครื่องมือ: AVEVA PRiSM (ML Residual Modeling) + Digital Twin · ตัวอย่างเคส: Smart OFA (2017 — ML ตรวจจับ Equipment Failure), Boiler Lifetime Forecasting @AboitizPower Arkanghel (2024)', url: 'https://www.repconexis.com/en/services/371' },
+                              { id: 'asset-info-mgmt', name: 'Asset Information Management', focus: true, colorVar: '--color-maximize', tagline: 'Single Source of Truth สำหรับข้อมูล Asset', description: 'ระบบบริหารจัดการข้อมูล Asset แบบเป็นระบบ — Asset Information คือหัวใจของ Digital Transformation · สร้างความโปร่งใส มีประสิทธิภาพ และเชื่อถือได้สำหรับการเดินเครื่อง · รวบรวมข้อมูลจากหลายแหล่ง (Multiple Data Sources) → สร้าง Single Source of Truth · Cross-reference ความสัมพันธ์ระหว่าง Equipment, Documents และ Drawings · Indicator Spec ที่กำหนดในระบบนี้จะถูกนำไปใช้ใน UHM ที่อยู่ใต้ UOC', url: 'https://www.repconexis.com/en/services/369' },
+                              { id: 'uoc', name: 'Unified Operations Center Solution', focus: true, colorVar: '--color-maximize', tagline: 'บ้านของ UHM — UOC แห่งแรกของไทย', description: 'Unified Operations Center (UOC) แห่งแรกของประเทศไทย · ให้ความสามารถมองเห็นการเดินเครื่องแบบ End-to-End ระหว่าง Data Centers · บูรณาการแพลตฟอร์มและข้อมูลจากทุกแหล่ง · ใช้ Cloud + AI ติดตามประสิทธิภาพแบบ Real-time ผ่าน Mobile/Tablet พร้อมแจ้งเตือนความผิดปกติ (Abnormalities & Anomalies) · Internal Implementation ของ SCG/SCGC คือ UHM (Unified Health Monitor) ที่ uhm.scg.com — ใช้บริหาร Indicators (เกณฑ์ LL/L/H/HH), Policies (กลุ่ม Asset), PDT (Process Data Template) และ Real-time Alert Dashboard · Renewable Operations Center สำหรับ Solar/Wind ได้รับ 2 รางวัล Global Awards จาก Huawei 2025', url: 'https://www.repconexis.com/en/services/370' },
+                              { id: 'smart-workforce', name: 'Smart Workforce Solution', focus: true, colorVar: '--color-maximize', tagline: 'AI + Real-time + ปรึกษาผู้เชี่ยวชาญสด', description: 'ยกระดับการเดินเครื่องด้วย Smart Workforce Solution · ใช้ AI ในการจัดการข้อมูล ให้ความสามารถมองเห็นการเดินเครื่องในโรงงานแบบ Real-time · แก้ปัญหาและประยุกต์ใช้ Best Practices ผ่านการ Live Connect กับผู้เชี่ยวชาญ · Digital Logbook บน Tablet · ลด Error จากการกรอกกระดาษ · เป็น Paperless Operation', url: 'https://www.repconexis.com/en/services/453' }
+                            ]}
+                          ]
+                        },
+                        {
+                          id: 'products', name: 'PRODUCT', fullName: 'REPCO NEX Proprietary Products', colorVar: '--color-product',
+                          tagline: '7 ผลิตภัณฑ์ที่พัฒนาเอง (Made in Thailand)', description: 'พอร์ตผลิตภัณฑ์ที่ REPCO NEX พัฒนาและทำตลาดเอง · เป็น Hardware Layer ของ DRS Platform',
+                          url: 'https://www.repconexis.com/en/product',
+                          children: [
+                            { id: 'bolt', name: 'BOLT', colorVar: '--color-product', tagline: 'จัดการ Bolted Joint', description: 'ระบบบริหารสกรู/น็อตข้อต่อรับแรงดัน · รับประกัน Sealing Integrity', url: 'https://www.repconexis.com/en/product/474' },
+                            { id: 'cus', name: 'CUS', fullName: 'Corrosion Under Support', colorVar: '--color-product', tagline: 'ตรวจ Corrosion ใต้ Pipe Support', description: 'เทคนิคและเครื่องมือตรวจการกัดกร่อนใต้จุด Pipe Support ที่เข้าถึงยาก', url: 'https://www.repconexis.com/en/product/455' },
+                            { id: 'corrotex', name: 'CORROTEX™', fullName: 'IoT CUI Sensor', colorVar: '--color-product', tagline: 'IoT Sensor ตรวจ CUI', description: 'IoT Sensor ตรวจการกัดกร่อนใต้ฉนวน (CUI) แบบ Real-time · พัฒนาปี 2016 · แก้ปัญหา Unplanned Shutdown ในโรงปิโตรเคมี', url: 'https://www.repconexis.com/en/product/302' },
+                            { id: 'srodtex', name: 'SRoDTEX™', colorVar: '--color-product', tagline: 'อุปกรณ์ตรวจสอบเชิงรุก', description: 'เทคนิค Inspection สำหรับ Asset ที่ต้องการความน่าเชื่อถือสูง', url: 'https://www.repconexis.com/en/product/301' },
+                            { id: 'rvs', name: 'RVS', fullName: 'Wireless Vibration Sensor', colorVar: '--color-product', tagline: 'เซ็นเซอร์การสั่นไร้สาย', description: 'ตรวจ Vibration ของมอเตอร์/ปั๊ม/พัดลม แบบ Wireless · ส่ง Cloud Platform เพื่อ Predictive Analysis', url: 'https://www.repconexis.com/en/product/454' },
+                            { id: 'smart-motor', name: 'Smart Motor', colorVar: '--color-product', tagline: 'มอเตอร์อัจฉริยะ', description: 'มอเตอร์มี Sensor ฝังในตัว · ตรวจ Vibration, Temperature, Current · แจ้งเตือนก่อน Failure', url: 'https://www.repconexis.com/en/product/300' },
+                            { id: 'cibot', name: 'CiBot™', fullName: 'Coil Inspection Robot', colorVar: '--color-product', tagline: 'หุ่นยนต์ตรวจสอบท่อใน Furnace', description: 'หุ่นยนต์ตรวจสอบท่อ Coil ใน Steam Boiler/Furnace · เริ่ม Commercialize ปี 2012 · ลด Shutdown Window > 50%', url: 'https://www.repconexis.com/en/product/296' }
+                          ]
+                        }
+                      ]
+                    },
+                    { id: 'rmt', name: 'RMT', fullName: 'Repco Maintenance Co., Ltd.', colorVar: '--color-other-biz', tagline: 'บริการบำรุงรักษา', description: 'พี่น้องของ REPCO · ให้บริการ Maintenance เฉพาะทาง' },
+                    { id: 'protech', name: 'Protech', fullName: 'Protech Outsourcing Co., Ltd.', colorVar: '--color-other-biz', tagline: 'Outsourcing Service', description: 'บริการ Outsourcing สำหรับงานเทคนิคในโรงงาน' },
+                    { id: 'flowlab', name: 'Flowlab', fullName: 'Flowlab & Service Co., Ltd.', colorVar: '--color-other-biz', tagline: 'Flow Measurement Service', description: 'บริการสอบเทียบและทดสอบ Flow Measurement' },
+                    { id: 'kation', name: 'Kation', fullName: 'Kation Power Co., Ltd.', colorVar: '--color-other-biz', tagline: 'Power Service', description: 'บริการระบบไฟฟ้าและพลังงาน' },
+                    { id: 'ril-1996', name: 'RIL 1996', colorVar: '--color-other-biz', tagline: 'Industrial Land/Service', description: 'RIL 1996 Co., Ltd.' }
+                  ]
+                },
+                { id: 'chemtech', name: 'Chemtech', colorVar: '--color-other-biz', tagline: 'Plastic Compound', description: 'Chemtech Co., Ltd. — Plastic Compound' }
+              ]
+            },
+            {
+              id: 'scgc-jv', name: 'Joint Ventures', colorVar: '--color-jv',
+              tagline: 'JV กับ Dow, Mitsui, Mitsubishi, Others', description: 'กิจการร่วมค้าของ SCGC กับ Partners ระดับโลก',
+              children: [
+                { id: 'spe', name: 'SPE', fullName: 'Siam Polyethylene', colorVar: '--color-jv', tagline: 'JV กับ Dow', description: 'Siam Polyethylene Co., Ltd. — JV กับ Dow' },
+                { id: 'spcl', name: 'SPCL', fullName: 'Siam Polystyrene', colorVar: '--color-jv', tagline: 'JV กับ Dow', description: 'Siam Polystyrene Co., Ltd.' },
+                { id: 'sslc', name: 'SSLC', fullName: 'Siam Synthetic Latex', colorVar: '--color-jv', tagline: 'JV กับ Dow', description: 'Siam Synthetic Latex Co., Ltd.' },
+                { id: 'rtc', name: 'RTC', fullName: 'Rayong Terminal', colorVar: '--color-jv', tagline: 'JV กับ Dow', description: 'Rayong Terminal Co., Ltd. — ผู้ดูแล Tank Farm' },
+                { id: 'gsc', name: 'GSC', fullName: 'Grand Siam Composites', colorVar: '--color-jv', tagline: 'JV กับ Mitsui', description: 'Grand Siam Composites Co., Ltd.' },
+                { id: 'mcz', name: 'MCZ', fullName: 'Mitsui Advanced Composites Zhongshan', colorVar: '--color-jv', tagline: 'JV กับ Mitsui (China)', description: 'Mitsui Advanced Composites (Zhongshan) — China JV' },
+                { id: 'stc', name: 'STC', fullName: 'Siam Tohcello', colorVar: '--color-jv', tagline: 'JV กับ Mitsui', description: 'Siam Tohcello Co., Ltd.' },
+                { id: 'tmma', name: 'TMMA', fullName: 'Thai MMA', colorVar: '--color-jv', tagline: 'JV กับ Mitsubishi Chemical', description: 'Thai MMA Co., Ltd.' },
+                { id: 'riken-th', name: 'Riken (Thailand)', colorVar: '--color-jv', tagline: 'JV ญี่ปุ่น', description: 'Riken (Thailand) Co., Ltd.' },
+                { id: 'tmfc', name: 'TMFC', fullName: 'Thai MFC', colorVar: '--color-jv', tagline: 'JV', description: 'Thai MFC Co., Ltd.' },
+                { id: 'binh-minh-viet', name: 'Binh Minh Viet', colorVar: '--color-jv', tagline: 'JV (Vietnam)', description: 'Binh Minh Viet Trading Investment Real Estate JSC' },
+                { id: 'ajp-vn', name: 'AJP (VN)', fullName: 'A.J. Plast (Vietnam)', colorVar: '--color-jv', tagline: 'JV (Vietnam)', description: 'A.J. Plast (Vietnam) Company Limited' }
+              ]
+            }
+          ]
+        },
+        /* ============ BU 6: SCGP ⭐ SET-LISTED ============ */
+        {
+          id: 'bu-scgp', name: 'Packaging (SCGP)', fullName: 'SCG Packaging PCL',
+          colorVar: '--color-scgp', tagline: 'ผู้นำบรรจุภัณฑ์ครบวงจรในอาเซียน · SET-Listed',
+          setListed: 'SCGP', isCenter: true,
+          stats: [{ label: 'ตลาด', value: 'SET: SCGP' }, { label: 'ครอบคลุม', value: 'ASEAN+EU' }],
+          description: 'บริษัทเอสซีจี แพคเกจจิ้ง จำกัด (มหาชน) — จดทะเบียนใน SET (SCGP) · Center Company · บริหารธุรกิจบรรจุภัณฑ์ครบวงจร 3 Business Groups',
+          strategicRole: 'ขับเคลื่อน Circular Economy ผ่าน Bio-based Packaging และ Recycling · ขยายเข้า UK, Italy, Vietnam, Netherlands, Spain',
+          url: 'https://www.scgpackaging.com',
+          children: [
+            { id: 'integrated-packaging', name: 'Integrated Packaging', colorVar: '--color-scgp', tagline: 'บรรจุภัณฑ์ครบวงจร', description: 'Paper Packaging, Flexible, Food Safety, Pre-print, Offset Printing', children: [
+              { id: 'siam-kraft', name: 'Siam Kraft Industry', colorVar: '--color-scgp', tagline: 'Core Subsidiary', description: 'Siam Kraft Industry Co., Ltd. — Core Subsidiary ของ Integrated Packaging' },
+              { id: 'scg-paper-energy', name: 'SCG Paper Energy', colorVar: '--color-scgp', tagline: 'พลังงานในโรงกระดาษ', description: 'SCG Paper Energy Co., Ltd.' },
+              { id: 'scgp-rigid-sg', name: 'SCGP Rigid Packaging', colorVar: '--color-scgp', tagline: 'Singapore Subsidiary', description: 'SCGP Rigid Packaging Solutions Pte. Ltd. (Singapore)' },
+              { id: 'tcg-solutions', name: 'TCG Solutions', colorVar: '--color-scgp', tagline: 'Singapore Subsidiary', description: 'TCG Solutions Pte. Ltd. (Singapore)' },
+              { id: 'law-print-uk', name: 'Law Print (UK)', colorVar: '--color-scgp', tagline: 'UK acquisition (2023)', description: 'Law Print & Packaging Management Ltd. — UK acquisition 2023' },
+              { id: 'bicappa-it', name: 'Bicappa Lab (IT)', colorVar: '--color-scgp', tagline: 'Italy acquisition (2023)', description: 'Bicappa Lab S.r.L (Italy) — acquired 2023' },
+              { id: 'starprint-vn', name: 'Starprint Vietnam', colorVar: '--color-scgp', tagline: 'Vietnam acquisition (2023)', description: 'Starprint Vietnam JSC — acquired 2023' }
+            ]},
+            { id: 'fibrous', name: 'Fibrous Business', colorVar: '--color-scgp', tagline: 'เยื่อกระดาษและกระดาษ', description: 'ผลิตเยื่อกระดาษและกระดาษคุณภาพสูง · โรงงานในไทยและภูมิภาค' },
+            { id: 'recycling', name: 'Recycling Business', colorVar: '--color-scgp', tagline: 'รีไซเคิลและ Circular Economy', description: 'รวบรวมและรีไซเคิลกระดาษและพลาสติก', children: [
+              { id: 'peute-nl', name: 'Peute Recycling (NL)', colorVar: '--color-scgp', tagline: 'Netherlands Acquisition', description: 'Peute Recycling B.V. (Dordrecht, Netherlands) — Major Acquisition' },
+              { id: 'peute-es', name: 'Peute Recycling (ES)', colorVar: '--color-scgp', tagline: 'Spain Operations', description: 'Peute Recycling Spain S.L.' },
+              { id: 'scgp-sol-sg', name: 'SCGP Solutions (SG)', colorVar: '--color-scgp', tagline: 'Singapore Holding', description: 'SCGP Solutions Pte. Ltd. (Singapore) — Holding Co. สำหรับ Peute' }
+            ]}
+          ]
+        },
+        /* ============ BU 7: SCG CLEANERGY ============ */
+        {
+          id: 'bu-cleanergy', name: 'Cleanergy', fullName: 'SCG Cleanergy Co., Ltd.',
+          colorVar: '--color-cleanergy', tagline: 'พลังงานสะอาดและหมุนเวียน · 100% Subsidiary',
+          isCenter: true,
+          stats: [{ label: 'Owned', value: '100%' }, { label: 'Target 2030', value: '3,500-5,000 MW' }, { label: 'Target 2026', value: '500 MW' }],
+          description: 'บริษัทเอสซีจี คลีนเนอร์ยี่ จำกัด — บริษัทย่อยที่ SCG ถือ 100% · พัฒนาและลงทุนพลังงานหมุนเวียนครบวงจร · Center Company ของกลุ่ม Cleanergy',
+          strategicRole: 'แกนหลักของการเปลี่ยนผ่านสู่ Net Zero 2050 ของ SCG · ขยายกำลังการผลิตเป็น 5 GW ภายใน 2028 · ส่วนหนึ่งของ Capital Allocation $6B (2025-2030)',
+          url: 'https://scgcleanergy.com',
+          children: [
+            { id: 'solar-rooftop', name: 'Solar Rooftop', colorVar: '--color-cleanergy', tagline: 'โซลาร์รูฟท็อปเชิงพาณิชย์', description: 'ติดตั้ง Solar Rooftop สำหรับโรงงานและอาคารพาณิชย์' },
+            { id: 'solar-farm', name: 'Solar Farm', colorVar: '--color-cleanergy', tagline: 'Solar Farm + Floating Solar', description: 'Solar Farm บนพื้นดินและ Floating Solar บนแหล่งน้ำ · เคสตัวอย่าง: 19.5 MW @Amata City Chonburi กับ B.Grimm Power' },
+            { id: 'wind-farm', name: 'Wind Farm', colorVar: '--color-cleanergy', tagline: 'พลังงานลม', description: 'การลงทุนและพัฒนาฟาร์มกังหันลม' },
+            { id: 'energy-storage', name: 'Energy Storage Solutions', colorVar: '--color-cleanergy', tagline: 'ระบบกักเก็บพลังงาน', description: 'ระบบแบตเตอรี่และ Energy Storage รองรับ Renewable Energy' }
+          ]
+        },
+        /* ============ BU 8: INVESTMENTS IN OTHER BUSINESSES ============ */
+        {
+          id: 'bu-investments', name: 'การลงทุนในธุรกิจอื่น', fullName: 'Investments in Other Businesses',
+          colorVar: '--color-investment', tagline: 'ธุรกิจอื่นที่ SCG ลงทุน — รวม SCGJWD',
+          description: 'หน่วยที่ 8 ของโครงสร้าง SCG · ครอบคลุมการลงทุนในธุรกิจอื่นที่ไม่ได้จัดอยู่ใน 7 BUs หลัก · ที่นี่คือบ้านของ SCGJWD',
+          children: [
+            { id: 'scgjwd', name: 'SCGJWD (SJWD)', fullName: 'SCGJWD Logistics PCL', colorVar: '--color-investment', tagline: 'ASEAN Largest Integrated Logistics ⭐ SET-Listed', setListed: 'SJWD', stats: [{ label: 'ตลาด', value: 'SET: SJWD' }, { label: 'Merger', value: '14 ก.พ. 2023' }], description: 'บริษัทจดทะเบียนใน SET (SJWD) เกิดจากการควบรวมระหว่าง SCG Logistics Management (SCGL) + JWD InfoLogistics (Feb 2023) — Largest Integrated Logistics & Supply Chain in ASEAN', strategicRole: 'ขยายการให้บริการ Logistics ครอบคลุม Industrial, General, Chemicals, Automotive, Cold Chain ทั่ว ASEAN', url: 'https://www.scgjwd.com', children: [
+              { id: 'industrial-logistics', name: 'Industrial Logistics', colorVar: '--color-investment', tagline: 'โลจิสติกส์อุตสาหกรรม', description: 'บริการขนส่งสำหรับ Industrial Products' },
+              { id: 'cold-chain', name: 'Cold Chain', colorVar: '--color-investment', tagline: 'ห่วงโซ่ความเย็น', description: 'Cold Chain Storage และขนส่งสินค้าควบคุมอุณหภูมิ' },
+              { id: 'chemicals-logistics', name: 'Chemicals Logistics', colorVar: '--color-investment', tagline: 'โลจิสติกส์เคมี', description: 'บริการขนส่งและคลังสินค้าสำหรับสารเคมี' },
+              { id: 'automotive-logistics', name: 'Automotive Logistics', colorVar: '--color-investment', tagline: 'โลจิสติกส์ยานยนต์', description: 'บริการขนส่งและจัดเก็บชิ้นส่วนยานยนต์' },
+              { id: 'asean-supply-chain', name: 'ASEAN Supply Chain', colorVar: '--color-investment', tagline: 'Supply Chain ภูมิภาค', description: 'บริการ Supply Chain Solutions ครอบคลุม ASEAN' }
+            ]},
+            { id: 'addventures', name: 'AddVentures', fullName: 'AddVentures by SCG (CVC)', colorVar: '--color-investment', tagline: 'Corporate Venture Capital', description: 'Corporate Venture Capital arm ของ SCG · ลงทุนใน Tech Startup ทั่วโลก โดยเฉพาะด้าน Deep Tech, B2B SaaS, Industrial Innovation' },
+            { id: 'strategic-investments', name: 'Strategic Investments', colorVar: '--color-investment', tagline: 'การลงทุนเชิงกลยุทธ์อื่น ๆ', description: 'การลงทุนใน Startup, Deep Tech และ Joint Ventures อื่น ๆ ที่สอดคล้องกับ ESG · ส่วนหนึ่งของ Capital Allocation $6B (2025-2030)' }
+          ]
+        }
+      ]
+    };
+
+    /* =========================================================
+       D3.js TREE RENDERING
+       ========================================================= */
+    const nodeWidth = 180;
+    const nodeHeight = 56;
+    const horizontalSpacing = 260;
+    const verticalSpacing = 68;
+
+    let nodeIdCounter = 0;
+    let root;
+    let selectedNode = null;
+
+    const svg = d3.select('#tree-svg');
+    const g = svg.append('g').attr('class', 'tree-g');
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 2.5])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+        document.getElementById('zoom-info').textContent = 'Zoom: ' + Math.round(event.transform.k * 100) + '%';
+      });
+    svg.call(zoom);
+
+    const tree = d3.tree().nodeSize([verticalSpacing, horizontalSpacing]);
+
+    function getColor(d) {
+      return getComputedStyle(document.documentElement).getPropertyValue(d.data.colorVar).trim() || '#666';
+    }
+
+    function collapse(d) {
+      if (d.children) {
+        d._children = d.children;
+        d._children.forEach(collapse);
+        d.children = null;
+      }
+    }
+
+    function expand(d) {
+      if (d._children) { d.children = d._children; d._children = null; }
+      if (d.children) d.children.forEach(expand);
+    }
+
+    function findNodeById(targetId, node = root) {
+      if (node.data.id === targetId) return node;
+      const children = node.children || node._children || [];
+      for (const child of children) {
+        const found = findNodeById(targetId, child);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function expandPath(node) {
+      let n = node.parent;
+      while (n) {
+        if (n._children) { n.children = n._children; n._children = null; }
+        n = n.parent;
+      }
+    }
+
+    function init() {
+      root = d3.hierarchy(treeData);
+      root.x0 = 0;
+      root.y0 = 0;
+
+      // Default collapse: depth >= 2 (more aggressive — cleaner initial view)
+      root.descendants().forEach(d => {
+        if (d.depth >= 2 && d.children) collapse(d);
+      });
+
+      // (No auto-expand — user can click Jump to REPCO or use Search to dive in)
+
+      update(root);
+      centerOnRoot();
+    }
+
+    function centerOnRoot() {
+      const sec = document.getElementById('tree-section');
+      const h = sec.clientHeight;
+      const initialTransform = d3.zoomIdentity.translate(120, h / 2).scale(0.75);
+      svg.transition().duration(500).call(zoom.transform, initialTransform);
+    }
+
+    function update(source) {
+      const treeLayout = tree(root);
+      const nodes = treeLayout.descendants();
+      const links = treeLayout.descendants().slice(1);
+
+      nodes.forEach(d => { d.y = d.depth * horizontalSpacing; });
+
+      const node = g.selectAll('g.node-card')
+        .data(nodes, d => d.id || (d.id = ++nodeIdCounter));
+
+      const nodeEnter = node.enter().append('g')
+        .attr('class', d => 'node-card' + (d.data.focus ? ' focus' : ''))
+        .attr('transform', d => `translate(${source.y0},${source.x0})`)
+        .on('click', (event, d) => { event.stopPropagation(); selectNode(d); });
+
+      nodeEnter.append('rect')
+        .attr('class', 'node-rect')
+        .attr('width', nodeWidth).attr('height', nodeHeight)
+        .attr('x', -nodeWidth / 2).attr('y', -nodeHeight / 2)
+        .attr('rx', 10).attr('fill', '#fff')
+        .attr('stroke', d => getColor(d)).attr('stroke-width', 1.5);
+
+      nodeEnter.append('rect')
+        .attr('width', 6).attr('height', nodeHeight)
+        .attr('x', -nodeWidth / 2).attr('y', -nodeHeight / 2)
+        .attr('fill', d => getColor(d));
+
+      nodeEnter.append('text')
+        .attr('class', 'node-text node-text-title')
+        .attr('x', -nodeWidth / 2 + 14).attr('y', -4).attr('fill', '#1a2332')
+        .text(d => d.data.name);
+
+      nodeEnter.append('text')
+        .attr('class', 'node-text node-text-sub')
+        .attr('x', -nodeWidth / 2 + 14).attr('y', 12).attr('fill', '#6b7280')
+        .text(d => {
+          const t = d.data.tagline || d.data.fullName || '';
+          return t.length > 30 ? t.slice(0, 29) + '…' : t;
+        });
+
+      // SET-Listed Badge (top-right, yellow star)
+      nodeEnter.filter(d => d.data.setListed).append('text')
+        .attr('class', 'node-badge')
+        .attr('x', nodeWidth / 2 - 28).attr('y', -nodeHeight / 2 + 14)
+        .attr('fill', 'var(--badge-set)').attr('font-size', 11)
+        .text('⭐');
+
+      // APM Focus Badge — small pink star at top-right corner
+      nodeEnter.filter(d => d.data.focus).append('text')
+        .attr('class', 'focus-tag')
+        .attr('x', nodeWidth / 2 - 42).attr('y', -nodeHeight / 2 + 14)
+        .attr('font-size', 14).attr('font-weight', 800)
+        .attr('fill', 'var(--focus-color)')
+        .text('★');
+
+      // Center Company Badge (top-right, red dot)
+      nodeEnter.filter(d => d.data.isCenter).append('text')
+        .attr('class', 'node-badge')
+        .attr('x', nodeWidth / 2 - 14).attr('y', -nodeHeight / 2 + 14)
+        .attr('fill', 'var(--badge-center)').attr('font-size', 14)
+        .text('●');
+
+      // Toggle button (+/-)
+      const toggle = nodeEnter.append('g')
+        .attr('class', 'node-toggle')
+        .attr('transform', `translate(${nodeWidth / 2}, 0)`)
+        .style('display', d => (d.children || d._children) ? null : 'none')
+        .on('click', (event, d) => { event.stopPropagation(); toggleChildren(d); });
+
+      toggle.append('circle')
+        .attr('r', 11).attr('fill', '#fff')
+        .attr('stroke', d => getColor(d)).attr('stroke-width', 1.5);
+
+      toggle.append('text')
+        .attr('text-anchor', 'middle').attr('dy', 4)
+        .attr('font-size', 14).attr('font-weight', 700)
+        .attr('fill', d => getColor(d))
+        .text(d => d.children ? '−' : '+');
+
+      const nodeUpdate = nodeEnter.merge(node);
+      nodeUpdate.transition().duration(400)
+        .attr('transform', d => `translate(${d.y},${d.x})`);
+
+      nodeUpdate.classed('selected', d => selectedNode === d);
+      nodeUpdate.select('.node-rect').attr('stroke-width', d => selectedNode === d ? 3 : 1.5);
+      nodeUpdate.select('.node-toggle')
+        .style('display', d => (d.children || d._children) ? null : 'none')
+        .select('text').text(d => d.children ? '−' : '+');
+
+      node.exit().transition().duration(400)
+        .attr('transform', d => `translate(${source.y},${source.x})`)
+        .style('opacity', 0).remove();
+
+      const link = g.selectAll('path.link').data(links, d => d.id);
+
+      const linkEnter = link.enter().insert('path', 'g')
+        .attr('class', 'link')
+        .attr('d', d => { const o = { x: source.x0, y: source.y0 }; return diagonal(o, o); });
+
+      linkEnter.merge(link).transition().duration(400)
+        .attr('d', d => diagonal(d, d.parent));
+
+      link.exit().transition().duration(400)
+        .attr('d', d => { const o = { x: source.x, y: source.y }; return diagonal(o, o); })
+        .remove();
+
+      nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+    }
+
+    function diagonal(s, d) {
+      const sx = s.y - nodeWidth / 2;
+      const sy = s.x;
+      const tx = d.y + nodeWidth / 2;
+      const ty = d.x;
+      const mx = (sx + tx) / 2;
+      return `M ${tx} ${ty} C ${mx} ${ty}, ${mx} ${sy}, ${sx} ${sy}`;
+    }
+
+    function toggleChildren(d) {
+      if (d.children) { d._children = d.children; d.children = null; }
+      else { d.children = d._children; d._children = null; }
+      update(d);
+    }
+
+    function selectNode(d) {
+      selectedNode = d;
+      expandPath(d);
+      renderDetailPanel(d);
+      renderBreadcrumb(d);
+      update(d);
+
+      // Animate to selected node
+      setTimeout(() => {
+        const sec = document.getElementById('tree-section');
+        const w = sec.clientWidth, h = sec.clientHeight;
+        const currentTransform = d3.zoomTransform(svg.node());
+        const k = currentTransform.k;
+        const x = -d.y * k + w / 2 - 200;
+        const y = -d.x * k + h / 2;
+        svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k));
+      }, 100);
+    }
+
+    function renderBreadcrumb(d) {
+      const path = d.ancestors().reverse();
+      const bc = document.getElementById('breadcrumb');
+      bc.innerHTML = '';
+      path.forEach((node, idx) => {
+        const span = document.createElement('span');
+        span.className = 'crumb' + (idx === path.length - 1 ? ' current' : '');
+        const color = getComputedStyle(document.documentElement).getPropertyValue(node.data.colorVar).trim();
+        span.innerHTML = `<span class="crumb-dot" style="background:${color}"></span>${node.data.name}`;
+        span.onclick = () => selectNode(node);
+        bc.appendChild(span);
+        if (idx < path.length - 1) {
+          const sep = document.createElement('span');
+          sep.className = 'crumb-sep'; sep.textContent = '▸';
+          bc.appendChild(sep);
+        }
+      });
+    }
+
+    const levelLabels = ['SCG GROUP', 'BUSINESS UNIT', 'COMPANY / DIVISION', 'COMPANY', 'COMPANY', 'SERVICE / CATEGORY', 'CATEGORY', 'SUB-SERVICE', 'OFFERING', 'DETAIL'];
+
+    function renderDetailPanel(d) {
+      document.getElementById('empty-state').style.display = 'none';
+      const panel = document.getElementById('panel-content');
+      panel.style.display = 'block';
+
+      const color = getComputedStyle(document.documentElement).getPropertyValue(d.data.colorVar).trim();
+
+      let html = '';
+      html += `<span class="panel-tag" style="background:${color}">${levelLabels[d.depth] || 'NODE'}</span>`;
+
+      // Badges row
+      const badges = [];
+      if (d.data.setListed) badges.push(`<span class="panel-badge set">⭐ SET-Listed: ${d.data.setListed}</span>`);
+      if (d.data.isCenter) badges.push(`<span class="panel-badge center">● Center Company</span>`);
+      if (d.data.focus) badges.push(`<span class="panel-badge focus">★ APM Focus</span>`);
+      if (badges.length > 0) html += `<div class="panel-badges">${badges.join('')}</div>`;
+
+      html += `<div class="panel-title">${d.data.name}</div>`;
+      if (d.data.fullName && d.data.fullName !== d.data.name) {
+        html += `<div class="panel-fullname">${d.data.fullName}</div>`;
+      }
+      if (d.data.tagline) html += `<div class="panel-tagline">"${d.data.tagline}"</div>`;
+
+      if (d.data.stats && d.data.stats.length > 0) {
+        html += `<div class="stats-grid">`;
+        d.data.stats.forEach(s => {
+          html += `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`;
+        });
+        html += `</div>`;
+      }
+
+      if (d.data.description) {
+        html += `<div class="section-title">รายละเอียด</div><div class="description">${d.data.description}</div>`;
+      }
+
+      if (d.data.strategicRole) {
+        html += `<div class="section-title">บทบาทเชิงกลยุทธ์</div><div class="strategic-box" style="border-left-color:${color};">${d.data.strategicRole}</div>`;
+      }
+
+      const children = d.children || d._children;
+      if (children && children.length > 0) {
+        html += `<div class="section-title">หน่วยลูก (${children.length})</div><div class="children-list">`;
+        children.forEach(c => {
+          const cColor = getComputedStyle(document.documentElement).getPropertyValue(c.data.colorVar).trim();
+          const cBadges = [];
+          if (c.data.setListed) cBadges.push('<span class="child-mini-badge set">⭐</span>');
+          if (c.data.isCenter) cBadges.push('<span class="child-mini-badge center">●</span>');
+          html += `<div class="child-chip" data-id="${c.data.id}"><div class="child-dot" style="background:${cColor}"></div><span class="child-name">${c.data.name}</span>${cBadges.join('')}<span style="color:var(--text-muted)">→</span></div>`;
+        });
+        html += `</div>`;
+      }
+
+      if (d.data.url) {
+        html += `<a class="external-link" href="${d.data.url}" target="_blank" rel="noopener">🔗 เปิดเว็บไซต์ทางการ</a>`;
+      }
+
+      panel.innerHTML = html;
+
+      panel.querySelectorAll('.child-chip').forEach(el => {
+        el.onclick = () => {
+          const id = el.getAttribute('data-id');
+          const childNode = children.find(c => c.data.id === id);
+          if (childNode) {
+            if (d._children) { d.children = d._children; d._children = null; update(d); }
+            selectNode(childNode);
+          }
+        };
+      });
+    }
+
+    /* SEARCH FUNCTIONALITY */
+    function flattenNodes(node = root, results = []) {
+      results.push(node);
+      const children = node.children || node._children || [];
+      children.forEach(c => flattenNodes(c, results));
+      return results;
+    }
+
+    function performSearch(query) {
+      const resultsEl = document.getElementById('search-results');
+      if (!query || query.length < 2) {
+        resultsEl.classList.remove('show');
+        return;
+      }
+      const allNodes = flattenNodes();
+      const q = query.toLowerCase();
+      const matches = allNodes.filter(n => {
+        const name = (n.data.name || '').toLowerCase();
+        const fullName = (n.data.fullName || '').toLowerCase();
+        const tagline = (n.data.tagline || '').toLowerCase();
+        return name.includes(q) || fullName.includes(q) || tagline.includes(q);
+      }).slice(0, 12);
+
+      resultsEl.innerHTML = '';
+      if (matches.length === 0) {
+        resultsEl.innerHTML = '<div class="search-no-result">ไม่พบผลลัพธ์</div>';
+      } else {
+        matches.forEach(m => {
+          const color = getComputedStyle(document.documentElement).getPropertyValue(m.data.colorVar).trim();
+          const path = m.ancestors().reverse().slice(0, -1).map(a => a.data.name).join(' › ');
+          const item = document.createElement('div');
+          item.className = 'search-result-item';
+          item.innerHTML = `<div class="search-result-dot" style="background:${color}"></div><div class="search-result-text"><div class="search-result-name">${m.data.name}</div><div class="search-result-path">${path || 'Root'}</div></div>`;
+          item.onclick = () => {
+            document.getElementById('search-input').value = '';
+            resultsEl.classList.remove('show');
+            selectNode(m);
+          };
+          resultsEl.appendChild(item);
+        });
+      }
+      resultsEl.classList.add('show');
+    }
+
+    document.getElementById('search-input').addEventListener('input', (e) => performSearch(e.target.value));
+    document.getElementById('search-input').addEventListener('focus', (e) => { if (e.target.value) performSearch(e.target.value); });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.search-wrapper')) document.getElementById('search-results').classList.remove('show');
+    });
+
+    /* CONTROLS */
+    document.getElementById('btn-expand').onclick = () => { root.each(expand); update(root); };
+    document.getElementById('btn-collapse').onclick = () => { root.children?.forEach(collapse); update(root); };
+    document.getElementById('btn-reset').onclick = () => {
+      selectedNode = null;
+      document.getElementById('empty-state').style.display = 'flex';
+      document.getElementById('panel-content').style.display = 'none';
+      document.getElementById('breadcrumb').innerHTML = '<span class="crumb current">SCG Group</span>';
+      init();
+    };
+    document.getElementById('btn-jump-repco').onclick = () => {
+      const repco = findNodeById('repco');
+      if (repco) selectNode(repco);
+    };
+    document.getElementById('btn-jump-apm').onclick = () => {
+      const apm = findNodeById('performance-max');
+      if (apm) selectNode(apm);
+    };
+
+    /* BOOTSTRAP */
+    init();
+    setTimeout(() => { selectNode(root); }, 600);
+  </script>
+</body>
+</html>
