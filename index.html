@@ -139,7 +139,7 @@
       50% { filter: drop-shadow(0 0 16px var(--color-scg)); }
     }
     .node-text { font-family: 'Sarabun'; pointer-events: none; user-select: none; }
-    .node-text-title { font-weight: 700; font-size: 12px; }
+    .node-text-title { font-weight: 700; }
     .node-text-sub { font-weight: 400; font-size: 9.5px; opacity: 0.85; }
     .node-badge { font-size: 9px; font-weight: 700; pointer-events: none; user-select: none; }
     .node-toggle { cursor: pointer; }
@@ -601,10 +601,25 @@
     /* =========================================================
        D3.js TREE RENDERING
        ========================================================= */
-    const nodeWidth = 180;
+    const nodeWidth = 200;
     const nodeHeight = 56;
-    const horizontalSpacing = 260;
+    const horizontalSpacing = 280;
     const verticalSpacing = 68;
+
+    // Smart text fitting — combines truncation + dynamic font-size
+    function getTitleConfig(name) {
+      if (!name) return { text: '', size: 12 };
+      const len = name.length;
+      if (len <= 22) return { text: name, size: 12 };
+      if (len <= 26) return { text: name, size: 11 };
+      if (len <= 30) return { text: name, size: 10.5 };
+      if (len <= 34) return { text: name, size: 10 };
+      return { text: name.slice(0, 32) + '…', size: 10 };
+    }
+    function getSubtitleText(t) {
+      if (!t) return '';
+      return t.length > 34 ? t.slice(0, 33) + '…' : t;
+    }
 
     let nodeIdCounter = 0;
     let root;
@@ -708,18 +723,25 @@
         .attr('x', -nodeWidth / 2).attr('y', -nodeHeight / 2)
         .attr('fill', d => getColor(d));
 
+      // Tooltip on hover — shows full name + tagline
+      nodeEnter.append('title')
+        .text(d => {
+          let t = d.data.name;
+          if (d.data.fullName && d.data.fullName !== d.data.name) t += ' (' + d.data.fullName + ')';
+          if (d.data.tagline) t += '\n— ' + d.data.tagline;
+          return t;
+        });
+
       nodeEnter.append('text')
         .attr('class', 'node-text node-text-title')
         .attr('x', -nodeWidth / 2 + 14).attr('y', -4).attr('fill', '#1a2332')
-        .text(d => d.data.name);
+        .style('font-size', d => getTitleConfig(d.data.name).size + 'px')
+        .text(d => getTitleConfig(d.data.name).text);
 
       nodeEnter.append('text')
         .attr('class', 'node-text node-text-sub')
         .attr('x', -nodeWidth / 2 + 14).attr('y', 12).attr('fill', '#6b7280')
-        .text(d => {
-          const t = d.data.tagline || d.data.fullName || '';
-          return t.length > 30 ? t.slice(0, 29) + '…' : t;
-        });
+        .text(d => getSubtitleText(d.data.tagline || d.data.fullName || ''));
 
       // SET-Listed Badge (top-right, yellow star)
       nodeEnter.filter(d => d.data.setListed).append('text')
